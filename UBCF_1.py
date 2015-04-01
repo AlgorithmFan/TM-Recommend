@@ -97,16 +97,22 @@ def main(UserModels, ItemList, parameters):
     mCRecords5.close()
 
 if __name__ == '__main__':
-    from CommFunc import ReadUserModels
+    from CommFunc import ReadUserModels, ReadBuyUserModels
     mCConfig = CReadConfig("config.ini")
     parameters = mCConfig.getUBCF()
 
     for key in parameters:
         print key, parameters[key]
 
-    filename = r'J:\DataSet\Competition\train_user.csv'
+    # filename = r'J:\DataSet\Competition\train_user.csv'
+    # print 'Load UserModels.'
+    # mUserModels, mItems = ReadUserModels(filename)
+
+    # filename = r'J:\DataSet\Competition\train_buy.csv'
+    filename = r'/home/zhd/Dataset/Competition/train_buy.csv'
     print 'Load UserModels.'
-    mUserModels, mItems = ReadUserModels(filename)
+    mUserModels, mItems = ReadBuyUserModels(filename)
+
 
     print 'The number of items is %d.' % len(mItems)
 

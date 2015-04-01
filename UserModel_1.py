@@ -37,7 +37,8 @@ class CUserModel:
         for item_id, behavior, user_geohash, timestamp in self.Items:
             index = getDay(timestamp)
             if index not in dataDict:
-                dataDict[index][ItemDict[item_id]] += Weight[behavior]
+                dataDict[index] = np.zeros(ItemLen, 'int')
+            dataDict[index][ItemDict[item_id]] += Weight[behavior]
         self.DataDict = dataDict
 
 

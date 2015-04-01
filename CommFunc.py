@@ -14,6 +14,62 @@ def WriteCSV(Filename, ColumnHeader, Data):
     Writer.writerows(Data)
     CsvFile.close()
 
+def ReadUserItems(Filename, flag=4):
+    formatter = '%Y-%m-%d %H'
+    CsvFile = file(Filename, 'rb')
+    reader = csv.reader(CsvFile)
+    UserItems = {}
+    ItemCategory = {}
+    for line in reader:
+        if reader.line_num==1:
+            continue
+        user_id = int(line[0])
+        item_id = int(line[1])
+        behavior = int(line[2])
+        geo = line[3]
+        item_category = int(line[4])
+        timestamp = time.mktime(time.strptime(line[5], formatter))
+        if behavior != flag:
+            continue
+        if user_id not in UserItems:
+            UserItems[user_id] = []
+        UserItems[user_id].append((item_id, timestamp))
+        if item_id not in ItemCategory:
+            ItemCategory[item_id] = set()
+        ItemCategory[item_id].add(item_category)
+    return UserItems, ItemCategory
+
+def ReadBuyUserModels(Filename):
+    '''读取数据'''
+    CsvFile = file(Filename, 'rb')
+    reader = csv.reader(CsvFile)
+    UserModels = {}
+    ItemSet = set()
+    for line in reader:
+        if reader.line_num==1:
+            continue
+        user_id = int(line[0])
+        item_id = int(line[1])
+        timestamp = int(float(line[2]))
+        if user_id not in UserModels:
+            UserModels[user_id] = CUserModel(user_id)
+        UserModels[user_id].addItem(item_id, 4, '', timestamp)
+        ItemSet.add(item_id)
+
+    ItemList = list(ItemSet)
+    print 'The number of items is %d.' % len(ItemList)
+    print 'The number of users is %d.' % len(UserModels)
+    Users = UserModels.keys()
+    for index in range(len(Users)):
+        user_id = Users[index]
+        UserModels[user_id].staticData(ItemList, 'd')
+        print index, user_id
+    # for user_id in UserModels:
+    #     print user_id
+    #     UserModels[user_id].staticData(ItemList, 'd')
+    print 'Over, return.'
+    return UserModels, ItemList
+
 def ReadUserModels(Filename):
     '''读取数据'''
     formatter = '%Y-%m-%d %H'
@@ -27,6 +83,8 @@ def ReadUserModels(Filename):
         user_id = int(line[0])
         item_id = int(line[1])
         behavior = int(line[2])
+        if behavior == 1:
+            continue
         geo = line[3]
         item_category = int(line[4])
         timestamp = time.mktime(time.strptime(line[5], formatter))
@@ -36,7 +94,8 @@ def ReadUserModels(Filename):
         ItemSet.add(item_id)
 
     ItemList = list(ItemSet)
-
+    print 'The number of items is %d.' % len(ItemList)
+    print 'The number of users is %d.' % len(UserModels)
     for user_id in UserModels:
         UserModels[user_id].staticData(ItemList, 'd')
     return UserModels, ItemList
@@ -55,7 +114,6 @@ def ReadItemDict(Filename):
         ItemDict[item_id] = (item_geohash, item_category)
     return ItemDict
 
-
 def calRec(recommendation, mUserModels, top_num):
     hitNum, recall, precision = 0, 0, 0
     for user_id in recommendation:
@@ -68,6 +126,7 @@ def calRec(recommendation, mUserModels, top_num):
             if sum(mUserModels[user_id].test[:, item_index])>0:
                 hitNum += 1
     return hitNum, recall, precision
+
 
 
 if __name__=='__main__':
