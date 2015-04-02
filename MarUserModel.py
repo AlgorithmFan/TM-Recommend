@@ -34,7 +34,8 @@ class CUserModel:
         for i in range(1):
             if dayStamp in self.dataDict:
                 for item_id, category_id, behavior in self.dataDict[dayStamp]:
-                    test.add(item_id)
+                    if behavior == 4:
+                        test.add(item_id)
             dayStamp += 86400
 
         self.train = train
@@ -52,7 +53,7 @@ class CUserModel:
                 continue
             buyset = set()
             for item_id, category_id, behavior in temp[index+1][1]:
-                if behavior != 1:
+                if behavior == 4:
                     buyset.add(item_id)
 
             if len(buyset) == 0:
