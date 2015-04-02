@@ -35,8 +35,8 @@ def ReadUserModels(Filename):
         user_id = int(line[0])
         item_id = int(line[1])
         behavior = int(float(line[2]))
-        if behavior == 1:
-            continue
+        # if behavior == 1:
+        #     continue
         geo = line[3]
         item_category = int(line[4])
         timestamp = int(time.mktime(time.strptime(line[5], formatter)))
@@ -78,14 +78,13 @@ def buildMarkov(UserModels, gram_n):
 
 
 def main(Filename, Parameters):
-    Parameters['gram_n'] = 2
     UserModels = ReadUserModels(Filename)
     gram_n = Parameters['gram_n']
     hitNum10, recNum10, preNum10 = 0, 0, 0
     hitNum5, recNum5, preNum5 = 0, 0, 0
 
-    mCRecords10 = CRecords(r'recommendation/UBCF_LastFm_2%s_t%d_a%d.txt' % (Parameters['date_flag'], 10, Parameters['items_thr']))
-    mCRecords5 = CRecords(r'recommendation/UBCF_LastFm_2%s_t%d_a%d.txt' % (Parameters['date_flag'], 5, Parameters['items_thr']))
+    mCRecords10 = CRecords(r'recommendation/Markov_1%s_t%d.txt' % (Parameters['date_flag'], 10))
+    mCRecords5 = CRecords(r'recommendation/Markov_1%s_t%d.txt' % (Parameters['date_flag'], 5))
     mCRecords10.writeDescription(Parameters['description'])
     mCRecords5.writeDescription(Parameters['description'])
     mCRecords10.writeParameters(Parameters)
@@ -132,7 +131,7 @@ def main(Filename, Parameters):
         date_num += Parameters['date_interval']
 
     print '*'*100
-    print 'artists_thr: %d.' % Parameters['items_thr']
+    # print 'artists_thr: %d.' % Parameters['items_thr']
     recall = float(hitNum10)/recNum10
     precision = float(hitNum10)/preNum10
     f1 = 2*recall*precision/(recall+precision)
@@ -140,7 +139,7 @@ def main(Filename, Parameters):
     print 'Recall: %d, %f.' % (recNum10, recall)
     print 'Precision: %d, %f.' % (preNum10, precision)
     print 'F1: ', f1
-    mCRecords10.writeDescription('artists_thr: %d.\n' % Parameters['items_thr'])
+    # mCRecords10.writeDescription('artists_thr: %d.\n' % Parameters['items_thr'])
     mCRecords10.writeDescription('Recall: %d, %f.\n' % (recNum10, recall))
     mCRecords10.writeDescription('Precision: %d, %f.\n' % (preNum10, precision))
     mCRecords10.writeDescription('F1: %f\n' % f1)
@@ -153,7 +152,7 @@ def main(Filename, Parameters):
     print 'Recall: %d, %f.' % (recNum5, recall)
     print 'Precision: %d, %f.' % (preNum5, precision)
     print 'F1: ', f1
-    mCRecords5.writeDescription('artists_thr: %d.\n' % Parameters['items_thr'])
+    # mCRecords5.writeDescription('artists_thr: %d.\n' % Parameters['items_thr'])
     mCRecords5.writeDescription('Recall: %d, %f.\n' % (recNum5, recall))
     mCRecords5.writeDescription('Precision: %d, %f.\n' % (preNum5, precision))
     mCRecords5.writeDescription('F1: %f\n' % f1)
@@ -161,10 +160,10 @@ def main(Filename, Parameters):
 
 
 if __name__ == '__main__':
-    filename = r'J:\DataSet\Competition\train_user.csv'
     # filename = r'/home/zhd/Dataset/Competition/train_user.csv'
     mCConfig = CReadConfig("config.ini")
-    parameters = mCConfig.getUBCF()
+    parameters = mCConfig.getMarkov()
+    filename = parameters['filename']
     main(filename, parameters)
 
 
