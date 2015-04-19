@@ -57,8 +57,8 @@ def ReadData(filename, lastStamp, num=10000):
     for line in reader:
         if reader.line_num == 1:
             continue
-        elif reader.line_num == num:
-            break
+        # elif reader.line_num == num:
+        #     break
         user_id = int(line[0])
         item_id = int(line[1])
         behavior = int(line[2])

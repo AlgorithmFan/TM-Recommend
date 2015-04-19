@@ -1,11 +1,6 @@
 #!usr/bin/env python
 #coding:utf-8
-'''
-# 用户所关注的Items
-# 用户所关注的分类
-# Item受欢迎程度
-# 随时间的
-'''
+
 import numpy as np
 from CommonFunc import ReadData
 from operator import itemgetter
@@ -34,6 +29,8 @@ def timeweight(behavior, pre_timestamp, cur_timestamp):
     else:
         return 0
 
+
+
 def extract(dataFilename, featuresFilename, lastStamp, pre_interval, after_interval):
     print 'Read Data from %s.' % dataFilename
     behaviorData, ItemCategory = ReadData(dataFilename, lastStamp)       # {user_id: {item_id: [(geo,behavior, timestamp), ...], ...}, ....}
@@ -43,7 +40,7 @@ def extract(dataFilename, featuresFilename, lastStamp, pre_interval, after_inter
     print 'Sort the data by time and behavior type.'
     for user_id in behaviorData:
         for item_id in behaviorData[user_id]:
-            behaviorData[user_id][item_id].sort(key=itemgetter(2,0))
+            behaviorData[user_id][item_id].sort(key=itemgetter(2, 0))
 
     #统计用户在购买item之前的点击次数
     print 'Static user_item.'
@@ -82,8 +79,8 @@ def extract(dataFilename, featuresFilename, lastStamp, pre_interval, after_inter
             if len(user_item_count_before_purchase[user_id][item_id]) > 0:      #统计用户点击了item后购买的行为，长度小于等于1的，表示没有购买的item
                 user_before_purchase.setdefault(user_id, list())
                 item_before_purchase.setdefault(item_id, list())
-                user_before_purchase[user_id].extend(user_item_count_before_purchase[user_id][item_id])
-                item_before_purchase[item_id].extend(user_item_count_before_purchase[user_id][item_id])
+                user_before_purchase[user_id].append(user_item_count_before_purchase[user_id][item_id][0])
+                item_before_purchase[item_id].append(user_item_count_before_purchase[user_id][item_id][0])
 
     print 'Calculate the mean and variance of user_before_purchase.'
     user_avg_before_purchase = dict()
@@ -101,6 +98,7 @@ def extract(dataFilename, featuresFilename, lastStamp, pre_interval, after_inter
         # # Item进行归一化处理
         # item_before_purchase[item_id] = (np.array(item_before_purchase[item_id]) - item_avg_before_purchase[item_id][0])/item_avg_before_purchase[item_id][1]
 
+
     print 'Static Positive Samples and Negative Samples.'
     positive_fp = file('in/positive_'+featuresFilename, 'wb')
     negative_fp = file('in/negative_'+featuresFilename, 'wb')
@@ -108,20 +106,36 @@ def extract(dataFilename, featuresFilename, lastStamp, pre_interval, after_inter
     negative_csv = csv.writer(negative_fp)
     positive_csv.writerow(['user_id', 'item_id', 'pre_purchase', 'clk_before_purchase', 'cart_before_purchase',
                            'fav_before_purchase', 'clk_user_avg', 'user_std', 'clk_item_avg', 'item_std',
-                           'u_purchase', ''])
+                           'u_purchase', 'item_purchase', 'u_unique_purchase', 'item_unique_purchase', 'user_item_count'])
     negative_csv.writerow(['user_id', 'item_id', 'pre_purchase', 'clk_before_purchase', 'cart_before_purchase',
                            'fav_before_purchase', 'clk_user_avg', 'user_std', 'clk_item_avg', 'item_std',
-                           'u_purchase', ''])
+                           'u_purchase', 'item_purchase', 'u_unique_purchase', 'item_unique_purchase', 'user_item_count'])
    # BehaviorCSV = {NEGATIVE: negative_csv, POSITIVE: positive_csv, TEST_POSITIVE: test_pos_csv, TEST_NEGATIVE: test_neg_csv}
+
+    user_purchase_num = dict()
+    user_purchase_unique_num = dict()
+    item_purchase_num = dict()
+    item_purchase_unique_num = dict()
+    for user_id in user_item_count_before_purchase:
+        user_purchase_num.setdefault(user_id, 0)
+        for item_id in user_item_count_before_purchase[user_id]:
+            num = len(user_item_count_before_purchase[user_id][item_id])
+            user_purchase_num[user_id] += num
+            user_purchase_unique_num[user_id] += 1
+            item_purchase_num.setdefault(item_id, 0)
+            item_purchase_num[item_id] += num
+            item_purchase_unique_num[item_id] += 1
+
+
 
     for user_id in behaviorData:
         if user_id in user_before_purchase:
-            u_purchase_count = len(user_before_purchase[user_id])
+            u_purchase_count = user_purchase_num[user_id]
         else:
             u_purchase_count = 0
 
         if user_id in user_item_count_before_purchase:
-            u_unique_count = len(user_item_count_before_purchase[user_id])
+            u_unique_count = user_purchase_unique_num[user_id]
         else:
             u_unique_count = 0
 
@@ -140,41 +154,42 @@ def extract(dataFilename, featuresFilename, lastStamp, pre_interval, after_inter
                         behavior_before_purchase[PURCHASE] = 1
                         train_flag = True
                     elif behavior == PURCHASE and train_flag is True:
-                        positive_csv.writerow([user_id, item_id,
-                                              len(user_item_count_before_purchase[user_id][item_id]) - 1 - behavior_before_purchase[PURCHASE],
-                                              behavior_before_purchase[PURCHASE],
-                                              behavior_before_purchase[CLICK],
-                                              behavior_before_purchase[FAVORATE],
-                                              behavior_before_purchase[CART],
-                                              behavior_before_purchase[CLICK]-user_avg_before_purchase[user_id][0],
-                                              user_avg_before_purchase[user_id][1],
-                                              behavior_before_purchase[CLICK]-item_avg_before_purchase[item_id][0],
-                                              item_avg_before_purchase[item_id][1],
-                                              u_purchase_count,
-                                              len(item_before_purchase[item_id]),
-                                              u_unique_count,
-                                              # len(item_before_purchase[item_])
-                                              len(user_item_count_before_purchase[user_id][item_id]),]
+                        positive_csv.writerow([user_id, item_id,    #用户的id和item的id
+                                              len(user_item_count_before_purchase[user_id][item_id]) - behavior_before_purchase[PURCHASE], #用户之前购买的数量
+                                              behavior_before_purchase[CLICK],  #用户购买前的点击次数
+                                              behavior_before_purchase[FAVORATE],   #用户购买那钱的收藏次数
+                                              behavior_before_purchase[CART],       #用户购买前的加入购物车次数
+                                              behavior_before_purchase[CLICK]-user_avg_before_purchase[user_id][0], #用户购买前平均点击次数归一化
+                                              user_avg_before_purchase[user_id][1],     #用户购买前点击次数的方差
+                                              behavior_before_purchase[CLICK]-item_avg_before_purchase[item_id][0], #item在购买前的平均点击次数归一化
+                                              item_avg_before_purchase[item_id][1],     #item购买前的方法
+                                              u_purchase_count,                         #用户购买item的数量
+                                              item_purchase_num[item_id],               #item被购买的数量
+                                              u_unique_count,                           #用户购买唯一item的数量
+                                              item_purchase_unique_num[item_id],        #item的用户数
+                                              len(user_item_count_before_purchase[user_id][item_id]),   #用户购买item的数量
+                                              ]
                                             )
                         behavior_before_purchase = {CLICK: 0, FAVORATE: 0, CART: 0, PURCHASE:behavior_before_purchase[PURCHASE]+1}
                         cur_timestamp = timestamp
                     elif train_flag is True:
                         behavior_before_purchase[behavior] += timeweight(behavior, timestamp, cur_timestamp)
                         if i == 0:
-                            positive_csv.writerow([user_id, item_id,
-                                              len(user_item_count_before_purchase[user_id][item_id]) - behavior_before_purchase[PURCHASE],
-                                              behavior_before_purchase[CLICK],
-                                              behavior_before_purchase[FAVORATE],
-                                              behavior_before_purchase[CART],
-                                              behavior_before_purchase[CLICK]-user_avg_before_purchase[user_id][0],
-                                              user_avg_before_purchase[user_id][1],
-                                              behavior_before_purchase[CLICK]-item_avg_before_purchase[item_id][0],
-                                              item_avg_before_purchase[item_id][1],
-                                              u_purchase_count,
-                                              len(item_before_purchase[item_id]),
-                                              u_unique_count,
-                                              # len(item_before_purchase[item_])
-                                              len(user_item_count_before_purchase[user_id][item_id]),]
+                            positive_csv.writerow([user_id, item_id,    #用户的id和item的id
+                                              len(user_item_count_before_purchase[user_id][item_id]) - behavior_before_purchase[PURCHASE], #用户之前购买的数量
+                                              behavior_before_purchase[CLICK],  #用户购买前的点击次数
+                                              behavior_before_purchase[FAVORATE],   #用户购买那钱的收藏次数
+                                              behavior_before_purchase[CART],       #用户购买前的加入购物车次数
+                                              behavior_before_purchase[CLICK]-user_avg_before_purchase[user_id][0], #用户购买前平均点击次数归一化
+                                              user_avg_before_purchase[user_id][1],     #用户购买前点击次数的方差
+                                              behavior_before_purchase[CLICK]-item_avg_before_purchase[item_id][0], #item在购买前的平均点击次数归一化
+                                              item_avg_before_purchase[item_id][1],     #item购买前的方法
+                                              u_purchase_count,                         #用户购买item的数量
+                                              item_purchase_num[item_id],               #item被购买的数量
+                                              u_unique_count,                           #用户购买唯一item的数量
+                                              item_purchase_unique_num[item_id],        #item的用户数
+                                              len(user_item_count_before_purchase[user_id][item_id]),   #用户购买item的数量
+                                              ]
                                             )
 
             else:
@@ -186,54 +201,23 @@ def extract(dataFilename, featuresFilename, lastStamp, pre_interval, after_inter
                     if timestamp>=lastStamp-pre_interval and timestamp<=lastStamp-after_interval:
                         behavior_before_purchase[behavior] += timeweight(behavior, timestamp, lastStamp)
 
-                negative_csv.writerow([user_id, item_id,
-                                      0,
-                                      behavior_before_purchase[CLICK],
-                                      behavior_before_purchase[FAVORATE],
-                                      behavior_before_purchase[CART],
-                                      0,
-                                      0,
-                                      0,
-                                      0,
-                                      u_purchase_count,
-                                      len(item_before_purchase[item_id]),
-                                      u_unique_count,
-                                      # len(item_before_purchase[item_])
-                                      0,]
+                negative_csv.writerow([user_id, item_id,    #用户的id和item的id
+                                      0,                    #用户之前购买的数量
+                                      behavior_before_purchase[CLICK],  #用户购买前的点击次数
+                                      behavior_before_purchase[FAVORATE], #用户购买前的收藏次数
+                                      behavior_before_purchase[CART],   #用户购买前的加入购物车次数
+                                      0,                    #用户购买前平均点击次数归一化
+                                      0,                    #用户购买前点击次数的方差
+                                      0,                    #item在购买前的平均点击次数归一
+                                      0,                    #item购买前的方法
+                                      u_purchase_count,     #用户购买item的数量
+                                      item_purchase_num[item_id],               #item被购买的数量
+                                      u_unique_count,                           #用户购买唯一item的数量
+                                      item_purchase_unique_num[item_id],        #item的用户数
+                                      0,                                        #用户购买item的数量
+                                      ]
                                     )
 
     positive_fp.close()
     negative_fp.close()
-
-
-if __name__ == '__main__':
-    import time
-    from ReadConf import CReadConfig
-    mCConfig = CReadConfig("config.ini")
-    parameters = mCConfig.getBasic()
-    train_filename = parameters['filename']
-    features_filename = 'features.txt'
-    lastStamp = time.mktime(time.strptime('2014-12-17 0', '%Y-%m-%d %H'))
-    pre_interval = 86400*20
-    after_interval = 86400*1
-    extract(train_filename, features_filename, lastStamp, pre_interval, after_interval)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
