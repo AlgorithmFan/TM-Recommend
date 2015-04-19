@@ -10,7 +10,7 @@ def main():
     mCConfig = CReadConfig("config.ini")
     parameters = mCConfig.getBasic()
     train_filename = parameters['filename']
-    features_filename = 'features.txt'
+    features_filename = 'features.csv'
     lastStamp = time.mktime(time.strptime('2014-12-17 0', '%Y-%m-%d %H'))
     pre_interval = 86400*20
     after_interval = 86400*1

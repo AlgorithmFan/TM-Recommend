@@ -36,7 +36,7 @@ def timeweight(behavior, pre_timestamp, cur_timestamp):
 
 def extract(dataFilename, featuresFilename, lastStamp, pre_interval, after_interval):
     print 'Read Data from %s.' % dataFilename
-    behaviorData, ItemCategory = ReadData(dataFilename)       # {user_id: {item_id: [(geo,behavior, timestamp), ...], ...}, ....}
+    behaviorData, ItemCategory = ReadData(dataFilename, lastStamp)       # {user_id: {item_id: [(geo,behavior, timestamp), ...], ...}, ....}
     print 'The number of users is %d.' % len(behaviorData)
     print 'The number of items is %d.' % len(ItemCategory)
 
@@ -54,9 +54,7 @@ def extract(dataFilename, featuresFilename, lastStamp, pre_interval, after_inter
             user_item_count_before_purchase[user_id].setdefault(item_id, [0])
             behavior_num = len(behaviorData[user_id][item_id])
             for i in range(behavior_num):
-                geo, behavior, timestamp = behaviorData[user_id][item_id][i]
-                if timestamp >= lastStamp: #如果行为时间超过最终的时间，则此条记录删除，主要用于计算测试集
-                    continue
+                behavior, geo, timestamp = behaviorData[user_id][item_id][i]
                 if behavior != PURCHASE:   #如果用户点击了item，则最后一个数字+1
                     user_item_count_before_purchase[user_id][item_id][-1] += 1
                     #最后一条记录，如果不是购买记录，则
@@ -130,9 +128,7 @@ def extract(dataFilename, featuresFilename, lastStamp, pre_interval, after_inter
             if user_id in user_item_count_before_purchase and item_id in user_item_count_before_purchase[user_id]:
                 train_flag, test_flag = False, False
                 for i in range(len(behaviorData[user_id][item_id])-1, -1):
-                    geo, behavior, timestamp = behaviorData[user_id][item_id][i]
-                    if timestamp>=lastStamp:
-                        continue
+                    behavior, geo, timestamp = behaviorData[user_id][item_id][i]
                     if behavior == PURCHASE and train_flag is False:
                         cur_timestamp = timestamp
                         behavior_before_purchase[PURCHASE] = 1
@@ -164,9 +160,7 @@ def extract(dataFilename, featuresFilename, lastStamp, pre_interval, after_inter
                 #For others, we predict whether purchase will happen after last day, so we assume the purchase day as
                 #(last_day + 1)
                 for i in range(len(behaviorData[user_id][item_id])-1, -1):
-                    geo, behavior, timestamp = behaviorData[user_id][item_id][i]
-                    if timestamp>=lastStamp:
-                        continue
+                    behavior, geo, timestamp = behaviorData[user_id][item_id][i]
                     if timestamp>=lastStamp-pre_interval and timestamp<=lastStamp-after_interval:
                         behavior_before_purchase[behavior] += timeweight(behavior, timestamp, lastStamp)
 

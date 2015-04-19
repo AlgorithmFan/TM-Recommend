@@ -47,7 +47,7 @@ def calRec(recommendation, mUserModels, top_num):
         hitNum += len(mUserModels[user_id].test & set(recommendation[user_id][:top_num]))
     return hitNum, recall, precision
 
-def ReadData(filename, num=10000):
+def ReadData(filename, lastStamp, num=10000):
     '''读取数据'''
     formatter = '%Y-%m-%d %H'
     csvFile = file(filename, 'rb')
@@ -65,6 +65,7 @@ def ReadData(filename, num=10000):
         geo = line[3]
         item_category = int(line[4])
         timestamp = int(time.mktime(time.strptime(line[5], formatter)))
+        if timestamp >= lastStamp:  continue
         userItems.setdefault(user_id, dict())
         userItems[user_id].setdefault(item_id, [])
         userItems[user_id][item_id].append((behavior, geo, timestamp))
