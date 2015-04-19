@@ -12,10 +12,11 @@ from operator import itemgetter
 import csv
 
 gamma = 86400*5
-PURCHASE = 5
+PURCHASE = 4
 CART = 3
 FAVORATE = 2
 CLICK = 1
+
 POSITIVE = 1
 TEST_POSITIVE = 2
 NEGATIVE = 0
@@ -23,7 +24,7 @@ TEST_NEGATIVE = 3
 
 def timeweight(behavior, pre_timestamp, cur_timestamp):
     if behavior == CLICK:
-        return np.exp(float(pre_timestamp-cur_timestamp)/gamma)
+        return np.exp((pre_timestamp-cur_timestamp)/gamma)
     elif behavior == FAVORATE:
         return 1
     elif behavior == CART:
@@ -34,13 +35,18 @@ def timeweight(behavior, pre_timestamp, cur_timestamp):
         return 0
 
 def extract(dataFilename, featuresFilename, lastStamp, pre_interval, after_interval):
+    print 'Read Data from %s.' % dataFilename
     behaviorData, ItemCategory = ReadData(dataFilename)       # {user_id: {item_id: [(geo,behavior, timestamp), ...], ...}, ....}
+    print 'The number of users is %d.' % len(behaviorData)
+    print 'The number of items is %d.' % len(ItemCategory)
 
+    print 'Sort the data by time and behavior type.'
     for user_id in behaviorData:
-        for item_id in behaviorData[user_id].keys():
-            behaviorData[user_id][item_id].sort(key=itemgetter((2,1)))
+        for item_id in behaviorData[user_id]:
+            behaviorData[user_id][item_id].sort(key=itemgetter(2,0))
 
     #统计用户在购买item之前的点击次数
+    print 'Static user_item.'
     user_item_count_before_purchase = dict()    #记录用户在购买item之前的点击行为
     for user_id in behaviorData:
         user_item_count_before_purchase.setdefault(user_id, dict())
@@ -58,14 +64,21 @@ def extract(dataFilename, featuresFilename, lastStamp, pre_interval, after_inter
                     if i == behavior_num-1:
                         del user_item_count_before_purchase[user_id][item_id][-1]
                 elif behavior == PURCHASE: #如果用户购买了item，则增加一条记录
-                    user_item_count_before_purchase[user_id][item_id].append(0)
+                    if i != behavior_num-1:
+                        user_item_count_before_purchase[user_id][item_id].append(0)
+
             if len(user_item_count_before_purchase[user_id][item_id]) < 1:  # 如果用户没有购买该item，则将该用户的item删除
                 del user_item_count_before_purchase[user_id][item_id]
+            elif user_item_count_before_purchase[user_id][item_id][-1] == 0:
+                del user_item_count_before_purchase[user_id][item_id][-1]
+                if len(user_item_count_before_purchase[user_id][item_id]) == 0:
+                    del user_item_count_before_purchase[user_id][item_id]
         if len(user_item_count_before_purchase[user_id]) < 1:       # 如果用户没有购买过，则将用户删除
             del user_item_count_before_purchase[user_id]
 
     user_before_purchase = dict()
     item_before_purchase = dict()
+    print 'User before purchase and item before purchase'
     for user_id in user_item_count_before_purchase:
         for item_id in user_item_count_before_purchase[user_id]:
             if len(user_item_count_before_purchase[user_id][item_id]) > 0:      #统计用户点击了item后购买的行为，长度小于等于1的，表示没有购买的item
@@ -74,6 +87,7 @@ def extract(dataFilename, featuresFilename, lastStamp, pre_interval, after_inter
                 user_before_purchase[user_id].extend(user_item_count_before_purchase[user_id][item_id])
                 item_before_purchase[item_id].extend(user_item_count_before_purchase[user_id][item_id])
 
+    print 'Calculate the mean and variance of user_before_purchase.'
     user_avg_before_purchase = dict()
     for user_id in user_before_purchase.keys():
         # 用户在购买前的平均点击次数和方差
@@ -81,7 +95,7 @@ def extract(dataFilename, featuresFilename, lastStamp, pre_interval, after_inter
         # # 进行归一化处理
         # user_before_purchase[user_id] = (np.array(user_before_purchase[user_id]) - user_avg_before_purchase[user_id][0])/user_avg_before_purchase[user_id][1]
 
-
+    print 'Calculate the mean and variance of item_before_purchase.'
     item_avg_before_purchase = dict()
     for item_id in item_before_purchase.keys():
         # Item在被购买前的平均点击次数和方差
@@ -89,7 +103,7 @@ def extract(dataFilename, featuresFilename, lastStamp, pre_interval, after_inter
         # # Item进行归一化处理
         # item_before_purchase[item_id] = (np.array(item_before_purchase[item_id]) - item_avg_before_purchase[item_id][0])/item_avg_before_purchase[item_id][1]
 
-
+    print 'Static Positive Samples and Negative Samples.'
     positive_fp = file('in/positive_'+featuresFilename, 'wb')
     negative_fp = file('in/negative_'+featuresFilename, 'wb')
     positive_csv = csv.writer(positive_fp)
@@ -178,7 +192,17 @@ def extract(dataFilename, featuresFilename, lastStamp, pre_interval, after_inter
 
 
 if __name__ == '__main__':
-    pass
+    import time
+    from ReadConf import CReadConfig
+    mCConfig = CReadConfig("config.ini")
+    parameters = mCConfig.getBasic()
+    train_filename = parameters['filename']
+    features_filename = 'features.txt'
+    lastStamp = time.mktime(time.strptime('2014-12-17 0', '%Y-%m-%d %H'))
+    pre_interval = 86400*20
+    after_interval = 86400*1
+    extract(train_filename, features_filename, lastStamp, pre_interval, after_interval)
+
 
 
 

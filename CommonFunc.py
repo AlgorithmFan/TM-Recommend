@@ -47,7 +47,7 @@ def calRec(recommendation, mUserModels, top_num):
         hitNum += len(mUserModels[user_id].test & set(recommendation[user_id][:top_num]))
     return hitNum, recall, precision
 
-def ReadData(filename):
+def ReadData(filename, num=10000):
     '''读取数据'''
     formatter = '%Y-%m-%d %H'
     csvFile = file(filename, 'rb')
@@ -57,6 +57,8 @@ def ReadData(filename):
     for line in reader:
         if reader.line_num == 1:
             continue
+        elif reader.line_num == num:
+            break
         user_id = int(line[0])
         item_id = int(line[1])
         behavior = int(line[2])
