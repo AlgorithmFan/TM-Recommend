@@ -5,7 +5,6 @@ import types
 import time
 import datetime
 import numpy as np
-from GetTime import getMonth, getWeek, getDay
 
 Weight = {1:0.05, 2:0.15, 3:0.2, 4:0.6}
 
@@ -14,7 +13,9 @@ class CUserModel:
         self.user_id = user_id
         self.Items = []
         self.flag = 'd'
+        self.level = 0
         self.dataDict = None
+        self.isRecommendation = False
         self.train = None
         self.test = None
 
@@ -25,107 +26,40 @@ class CUserModel:
         '''Sort the items order by time asc'''
         self.Items.sort(key=lambda x:x[3])
 
-    def staticData(self, ItemList, flag):
-        '''
-        Divide the data according to interval.
-        '''
-        self.flag = flag
-        ItemLen = len(ItemList)
-        ItemDict = {ItemList[i]: i for i in range(ItemLen)}
-        self.sortItemsByTime()
-        dataDict = {}
+    def isRecommend(self, startstamp, endstamp):
+        buy_num = 0
+        flag = False
+        level = 0
         for item_id, behavior, user_geohash, timestamp in self.Items:
-            index = getDay(timestamp)
-            if index not in dataDict:
-                dataDict[index] = np.zeros(ItemLen, 'int')
-            dataDict[index][ItemDict[item_id]] += Weight[behavior]
-        self.DataDict = dataDict
-
-
-    def splitDate(self, **parameters):
-        '''
-        Split the data into train dataset and test dataset according to interval.
-        '''
-        dateFuncDict = {'m': self.splitDataByMonth, 'w':self.splitDataByWeek, 'd':self.splitDataByDay}
-        dateFunc = dateFuncDict[self.flag]
-        train, test = dateFunc(**parameters)
-
-        if len(train)==0:
-            return False
+            if behavior == 4:
+                buy_num += 1
+            if timestamp>=startstamp and timestamp < endstamp:
+                flag = True
+                if timestamp > level:
+                    level = timestamp
+        if buy_num and flag:
+            self.isRecommendation = True
+            self.level = 3600.0/(endstamp-level)
         else:
-            self.train = np.array(train)
-            if len(test) == 0:
-                self.test = np.zeros((1, self.train.shape[1]))
-            else:
-                self.test = np.array(test)
-            index = np.nonzero(self.train.sum(axis=0)>0)
-            self.test[:, index] = np.zeros(self.test[:, index].shape)
-            return True
+            self.isRecommendation = False
 
-    def splitDataByDay(self, _year, _month, _day, _dateNum=30):
+    def getBuyItems(self, endstamp):
+        items = set()
+        for item_id, behavior, user_geohash, timestamp in self.Items:
+            if timestamp<endstamp and behavior==4:
+                items.add(item_id)
+        return items
+
+    def splitDataByDay(self, startstamp, endstamp):
         '''
         Spliting the data according to day.
         '''
-        dayStamp = int(time.mktime(time.strptime('%d-%d-%d' % (_year, _month, _day),'%Y-%m-%d')))
-        train, test = [], []
-        dateNum = _dateNum
-        for i in range(dateNum):
-            if dayStamp in self.dataDict:
-                train.append(self.dataDict[dayStamp])
-            dayStamp += 86400
-
-        for i in range(1):
-            if dayStamp in self.dataDict:
-                test.append(self.dataDict[dayStamp])
-            dayStamp += 86400
-
-        return train, test
-
-    def splitDataByMonth(self, _year, _month, _day, _dateNum = 12):
-        '''
-        Spliting the data according to month.
-        '''
-        train, test = [], []
-        year, month, dateNum = _year, _month, _dateNum
-        for i in range(dateNum):
-            index = datetime.datetime(year=year, month=month, day=1)
-            index = int(time.mktime(index.timetuple()))
-            if index in self.dataDict:
-                train.append(self.dataDict[index])
-            month += 1
-            if month>12:
-                year += 1
-                month = 1
-
-        for i in range(1):
-            index = datetime.datetime(year=year, month=month, day=1)
-            index = int(time.mktime(index.timetuple()))
-            if index in self.dataDict:
-                test.append(self.dataDict[index])
-            month += 1
-            if month > 12:
-                year += 1
-                month -= 12
-
-        return train, test
-
-    def splitDataByWeek(self, _year, _month, _day,  _dateNum = 10):
-        '''
-        Spliting the data according to week.
-        '''
-        dayStamp = int(time.mktime(time.strptime('%d-%d-%d' % (_year, _month, _day),'%Y-%m-%d')))
-        weekStamp = getWeek(dayStamp)
-        train, test = [], []
-        dateNum = _dateNum
-        for i in range(dateNum):
-            if weekStamp in self.dataDict:
-                train.append(self.dataDict[weekStamp])
-            weekStamp += 604800
-
-        for i in range(1):
-            if weekStamp in self.dataDict:
-                test.append(self.dataDict[weekStamp])
-            weekStamp += 604800
-
-        return train, test
-
+        train, test = [], set()
+        for item_id, behavior, user_geohash, timestamp in self.Items:
+            if timestamp >= startstamp and timestamp < endstamp:
+                train.append((item_id, behavior, user_geohash, timestamp))
+            elif timestamp>= endstamp and timestamp < endstamp+43200:
+                if behavior == 4:
+                    test.add(item_id)
+        self.train = train
+        self.test = test
