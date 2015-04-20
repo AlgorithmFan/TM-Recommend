@@ -30,7 +30,6 @@ def timeweight(behavior, pre_timestamp, cur_timestamp):
         return 0
 
 
-
 def extract(dataFilename, featuresFilename, lastStamp, pre_interval, after_interval):
     print 'Read Data from %s.' % dataFilename
     behaviorData, ItemCategory = ReadData(dataFilename, lastStamp)       # {user_id: {item_id: [(geo,behavior, timestamp), ...], ...}, ....}
@@ -59,8 +58,7 @@ def extract(dataFilename, featuresFilename, lastStamp, pre_interval, after_inter
                     if i == behavior_num-1:
                         del user_item_count_before_purchase[user_id][item_id][-1]
                 elif behavior == PURCHASE: #如果用户购买了item，则增加一条记录
-                    if i != behavior_num-1:
-                        user_item_count_before_purchase[user_id][item_id].append(0)
+                    user_item_count_before_purchase[user_id][item_id].append(0)
 
             if len(user_item_count_before_purchase[user_id][item_id]) < 1:  # 如果用户没有购买该item，则将该用户的item删除
                 del user_item_count_before_purchase[user_id][item_id]
